@@ -1,0 +1,67 @@
+import pandas as pd
+import numpy as np
+# Load the dataset (Change 'customer_data.csv' to your actual file name)
+try:
+    df = pd.read_csv("C:/Users/hansr/Downloads/caiitg2/Dataset.csv")
+    print("Dataset loaded successfully.")
+except FileNotFoundError:
+    print("Error: 'customer_data.csv' not found. Please check the file path.")
+    exit()
+# CLEAN FREQUENCY OF PURCHASES
+frequency_mapping = {
+    'Fortnightly': 'Bi-Weekly',
+    'Bi-Weekly': 'Bi-Weekly',
+    'Every 3 Months': 'Quarterly',
+    'Quarterly': 'Quarterly'
+}
+# Map the changes; keep original values (like 'Weekly', 'Monthly') if they don't match the map
+df['Frequency of Purchases'] = df['Frequency of Purchases'].replace(frequency_mapping)
+# CLASSIFY AGE GROUPS
+age_bins = [17, 24, 39, 55, 70]
+age_labels = [
+    'Mobile-First / Social Buyers',
+    'Digital Natives',
+    'Digital Adopters',
+    'Traditional Web Shoppers']
+df['Age Group'] = pd.cut(df['Age'], bins=age_bins, labels=age_labels)
+# CLASSIFY PURCHASE AMOUNT (USD)
+# Note: Adjusting slightly to 19.99 to ensure exactly $20 is caught in the first bucket
+spend_bins = [19.99, 39, 69, 100]
+spend_labels = [
+    'Entry-Level Buyers',
+    'Core Spenders',
+    'Premium Spenders'
+]
+df['Spend Segment'] = pd.cut(df['Purchase Amount (USD)'], bins=spend_bins, labels=spend_labels)
+# CLASSIFY PREVIOUS PURCHASES
+purchase_bins = [0, 1, 5, 15, 50]
+purchase_labels = [
+    'First-Time Buyers',
+    'Repeat Customers',
+    'Brand Enthusiasts',
+    'Brand Evangelists'
+]
+df['Loyalty Segment'] = pd.cut(df['Previous Purchases'], bins=purchase_bins, labels=purchase_labels)
+# ASSIGN FREQUENCY SCORES
+score_mapping = {
+    'Annually': 0.002739,
+    'Quarterly': 0.011111,
+    'Monthly': 0.033333,
+    'Bi-Weekly': 0.071428,
+    'Weekly': 0.142857}
+df['Frequency Score'] = df['Frequency of Purchases'].map(score_mapping)
+# CALCULATE ESTIMATED ENGAGEMENT (DAYS & YEARS)
+# Formula for Days: (Previous Purchases / Frequency Score)
+df['Estimated Engagement (Days)'] = np.where(
+    df['Frequency Score'] > 0, 
+    df['Previous Purchases'] / df['Frequency Score'], 
+    0
+)
+# New Formula for Years: (Estimated Engagement Days / 365)
+# We also round it to 1 decimal place so it looks clean in Excel (e.g., 2.5 years)
+df['Estimated Engagement (Years)'] = np.rounded(df['Estimated Engagement (Days)'] / 365, 1) if hasattr(np, 'rounded') else (df['Estimated Engagement (Days)'] / 365).round(1)
+output_file = 'cleaned_customer_data.csv'
+df.to_csv(output_file, index=False)
+print(f"🎉 Cleaning complete! Saved as '{output_file}'.")
+print("\nPreview of the new engagement metrics:")
+print(df[['Previous Purchases', 'Frequency of Purchases', 'Estimated Engagement (Days)', 'Estimated Engagement (Years)']].head())
